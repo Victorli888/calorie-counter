@@ -76,43 +76,15 @@ deno task build
 
 The built files will be in the `_fresh/static` directory.
 
-## Deployment to GitHub Pages
+## Deployment to Deno Deploy
 
-Since GitHub Pages serves static files, you have a few options for Supabase credentials:
-
-### Option 1: Hardcode in code (Simplest)
-The Supabase anon key is safe to expose client-side. You can directly set the values in `utils/supabase.ts`:
-
-```typescript
-const supabaseUrl = "https://your-project.supabase.co";
-const supabaseAnonKey = "your-anon-key-here";
-```
-
-### Option 2: Window globals
-Add a script tag in `routes/_app.tsx` before the closing `</head>` tag:
-
-```html
-<script>
-  window.SUPABASE_URL = "https://your-project.supabase.co";
-  window.SUPABASE_ANON_KEY = "your-anon-key-here";
-</script>
-```
-
-### Option 3: Build script injection
-Create a build script that replaces placeholders during build.
-
-### Building and Deploying
-
-1. Build the project:
-   ```bash
-   deno task build
-   ```
-
-2. The built files will be in `_fresh/static` directory
-
-3. Deploy the contents of `_fresh/static` to your GitHub Pages repository
-
-**Note**: For a fully static deployment, Fresh will generate static HTML. Make sure your Supabase RLS policies allow public access or adjust them accordingly.
+1. Push your code to GitHub
+2. Connect your repository to Deno Deploy
+3. Set environment variables in Deno Deploy dashboard:
+   - `SUPABASE_URL` - Your Supabase project URL
+   - `SUPABASE_ANON_KEY` - Your Supabase anon key
+4. Set the entrypoint to `main.ts`
+5. Deploy!
 
 ## Project Structure
 
