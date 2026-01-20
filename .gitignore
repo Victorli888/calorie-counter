@@ -1,0 +1,19 @@
+# Fresh
+_fresh/
+.fresh/
+
+# Environment variables
+.env
+
+# Deno
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
