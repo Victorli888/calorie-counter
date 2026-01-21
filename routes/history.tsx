@@ -1,23 +1,18 @@
 import { type Handlers, type PageProps } from "$fresh/server.ts";
 import HistoryView from "../islands/HistoryView.tsx";
-import { getSupabaseClient } from "../utils/supabase.ts";
+import { getSupabaseClient, type Entry } from "../utils/supabase.ts";
 
-interface DayTotal {
-  entry_date: string;
-  total_calories: number;
-  total_protein: number;
-}
-
-export const handler: Handlers<DayTotal[]> = {
+export const handler: Handlers<Entry[]> = {
   async GET(_req, ctx) {
     try {
       const supabase = getSupabaseClient();
       console.log("Fetching history from Supabase...");
       
+      // Fetch all entries ordered by created_at - client will group by local date
       const { data, error } = await supabase
         .from("entries")
-        .select("entry_date, calories, protein")
-        .order("entry_date", { ascending: false });
+        .select("id, entry_name, calories, protein, created_at")
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Error fetching history:", error);
@@ -25,28 +20,7 @@ export const handler: Handlers<DayTotal[]> = {
       }
 
       console.log(`Fetched ${data?.length || 0} entries for history`);
-
-      // Group by date and calculate totals
-      const grouped: Record<string, DayTotal> = {};
-      (data || []).forEach((entry) => {
-        const date = entry.entry_date;
-        if (!grouped[date]) {
-          grouped[date] = {
-            entry_date: date,
-            total_calories: 0,
-            total_protein: 0,
-          };
-        }
-        grouped[date].total_calories += entry.calories;
-        grouped[date].total_protein += entry.protein;
-      });
-
-      const dayTotals = Object.values(grouped).sort(
-        (a, b) => b.entry_date.localeCompare(a.entry_date)
-      );
-
-      console.log(`Grouped into ${dayTotals.length} days`);
-      return ctx.render(dayTotals);
+      return ctx.render(data || []);
     } catch (err) {
       console.error("Error in history handler:", err);
       return ctx.render([]);
@@ -54,11 +28,11 @@ export const handler: Handlers<DayTotal[]> = {
   },
 };
 
-export default function History({ data }: PageProps<DayTotal[]>) {
+export default function History({ data }: PageProps<Entry[]>) {
   return (
     <div>
       <h2 class="text-3xl font-bold mb-6 text-gray-800">History</h2>
-      <HistoryView dayTotals={data} />
+      <HistoryView entries={data} />
     </div>
   );
 }

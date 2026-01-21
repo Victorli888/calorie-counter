@@ -73,6 +73,6 @@ export interface Entry {
   entry_name: string;
   calories: number;
   protein: number;
-  entry_date: string;
-  created_at?: string;
+  created_at: string; // Required, TIMESTAMPTZ in UTC - single source of truth for dates
+  // entry_date is deprecated and ignored - all date logic uses created_at
 }

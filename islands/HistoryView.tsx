@@ -1,33 +1,69 @@
-interface DayTotal {
-  entry_date: string;
-  total_calories: number;
-  total_protein: number;
-}
+import { useState } from "preact/hooks";
+import { type Entry } from "../utils/supabase.ts";
+import { getUserTimezone, getLocalDateString, formatTimestamp } from "../utils/timezone.ts";
 
 interface HistoryViewProps {
-  dayTotals: DayTotal[];
+  entries: Entry[];
+}
+
+interface LocalDayTotal {
+  localDate: string; // Local date string (YYYY-MM-DD)
+  total_calories: number;
+  total_protein: number;
 }
 
 interface MonthGroup {
   month: string;
   year: number;
-  days: DayTotal[];
+  days: LocalDayTotal[];
 }
 
-export default function HistoryView({ dayTotals }: HistoryViewProps) {
-  // Group days by month
+export default function HistoryView({ entries }: HistoryViewProps) {
+  // Detect user's timezone
+  const [timezone] = useState(() => getUserTimezone());
+  
+  // Group entries by local date (derived from created_at timestamps)
+  const localDayMap = new Map<string, LocalDayTotal>();
+  
+  entries.forEach((entry) => {
+    // Convert UTC timestamp to local date string
+    const localDate = getLocalDateString(new Date(entry.created_at), timezone);
+    
+    if (!localDayMap.has(localDate)) {
+      localDayMap.set(localDate, {
+        localDate,
+        total_calories: 0,
+        total_protein: 0,
+      });
+    }
+    
+    const dayTotal = localDayMap.get(localDate)!;
+    dayTotal.total_calories += entry.calories;
+    dayTotal.total_protein += entry.protein;
+  });
+
+  // Convert to array and sort by date (newest first)
+  const localDays = Array.from(localDayMap.values()).sort(
+    (a, b) => b.localDate.localeCompare(a.localDate)
+  );
+
+  // Group by month
   const monthGroups: MonthGroup[] = [];
   const monthMap = new Map<string, MonthGroup>();
 
-  dayTotals.forEach((day) => {
-    const date = new Date(day.entry_date);
-    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+  localDays.forEach((day) => {
+    // Parse local date to get month/year
+    const [year, month] = day.localDate.split("-").map(Number);
+    const monthKey = `${year}-${month - 1}`; // month is 0-indexed for Date
+    
+    // Create a date object for formatting (using local date)
+    const date = new Date(year, month - 1, 1);
     const monthName = date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
     if (!monthMap.has(monthKey)) {
       const group: MonthGroup = {
         month: monthName,
-        year: date.getFullYear(),
+        year: year,
         days: [],
       };
       monthMap.set(monthKey, group);
@@ -38,7 +74,7 @@ export default function HistoryView({ dayTotals }: HistoryViewProps) {
     group.days.push(day);
   });
 
-  if (dayTotals.length === 0) {
+  if (localDays.length === 0) {
     return (
       <div class="bg-white rounded-lg shadow-md p-8 text-center">
         <p class="text-gray-500 text-lg">No history yet. Start tracking your calories!</p>
@@ -55,15 +91,19 @@ export default function HistoryView({ dayTotals }: HistoryViewProps) {
           </h3>
           <div class="space-y-2">
             {group.days.map((day) => {
-              const date = new Date(day.entry_date);
+              // Format the local date for display
+              const [year, month, dayNum] = day.localDate.split("-").map(Number);
+              const date = new Date(year, month - 1, dayNum);
               const formattedDate = date.toLocaleDateString("en-US", {
                 weekday: "short",
                 month: "short",
                 day: "numeric",
+                year: "numeric",
               });
+              
               return (
                 <div
-                  key={day.entry_date}
+                  key={day.localDate}
                   class="flex justify-between items-center py-2 px-3 rounded hover:bg-gray-50 transition-colors"
                 >
                   <span class="font-medium text-gray-700">{formattedDate}</span>

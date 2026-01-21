@@ -7,11 +7,17 @@ CREATE TABLE entries (
   entry_name text NOT NULL,
   calories integer NOT NULL,
   protein integer NOT NULL,
-  entry_date date NOT NULL,
-  created_at timestamp with time zone DEFAULT now()
+  entry_date date, -- DEPRECATED: Made nullable. Application uses created_at instead.
+  created_at timestamp with time zone DEFAULT now() NOT NULL -- Single source of truth for all date operations
 );
 
--- Index for efficient date queries
+-- If you already have the table with entry_date NOT NULL, run this to make it nullable:
+-- ALTER TABLE entries ALTER COLUMN entry_date DROP NOT NULL;
+
+-- Index for efficient timestamp queries (primary index for date filtering)
+CREATE INDEX idx_created_at ON entries(created_at DESC);
+
+-- Legacy index (kept for backward compatibility, but not used by application)
 CREATE INDEX idx_entry_date ON entries(entry_date);
 
 -- Enable Row Level Security (optional but recommended)

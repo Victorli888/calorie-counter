@@ -5,14 +5,13 @@ import { getSupabaseClient, type Entry } from "../utils/supabase.ts";
 export const handler: Handlers<Entry[]> = {
   async GET(_req, ctx) {
     try {
-      const today = new Date().toISOString().split("T")[0];
       const supabase = getSupabaseClient();
-      console.log("Fetching entries for today:", today);
+      // Fetch all entries - client will filter by UTC timestamp range based on user's timezone
+      console.log("Fetching entries for today page...");
       
       const { data, error } = await supabase
         .from("entries")
         .select("*")
-        .eq("entry_date", today)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -20,7 +19,7 @@ export const handler: Handlers<Entry[]> = {
         return ctx.render([]);
       }
 
-      console.log(`Fetched ${data?.length || 0} entries for today`);
+      console.log(`Fetched ${data?.length || 0} entries`);
       return ctx.render(data || []);
     } catch (err) {
       console.error("Error in index handler:", err);

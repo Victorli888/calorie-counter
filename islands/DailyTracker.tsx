@@ -1,12 +1,15 @@
 import { useState, useEffect } from "preact/hooks";
 import { type Entry, getSupabaseClient } from "../utils/supabase.ts";
+import { getUserTimezone, getTodayLocalDateString, getLocalDayUtcRange, getLocalDateString } from "../utils/timezone.ts";
 
 interface DailyTrackerProps {
   initialEntries: Entry[];
 }
 
 export default function DailyTracker({ initialEntries }: DailyTrackerProps) {
-  const [entries, setEntries] = useState<Entry[]>(initialEntries);
+  // Detect user's timezone
+  const [timezone] = useState(() => getUserTimezone());
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +25,27 @@ export default function DailyTracker({ initialEntries }: DailyTrackerProps) {
     protein: "",
   });
 
-  const today = new Date().toISOString().split("T")[0];
+  // Get today's date in user's timezone
+  const todayLocal = getTodayLocalDateString(timezone);
+
+  // Initialize with filtered entries from server
+  useEffect(() => {
+    console.log("Initializing DailyTracker - timezone:", timezone, "todayLocal:", todayLocal);
+    console.log("Initial entries count:", initialEntries.length);
+    
+    // Filter entries to only show today's entries based on created_at
+    const filtered = initialEntries.filter(entry => {
+      const localDate = getLocalDateString(new Date(entry.created_at), timezone);
+      const matches = localDate === todayLocal;
+      if (!matches) {
+        console.log(`Entry ${entry.id} filtered out - localDate: ${localDate}, todayLocal: ${todayLocal}`);
+      }
+      return matches;
+    });
+    
+    console.log("Filtered entries count:", filtered.length);
+    setEntries(filtered);
+  }, [initialEntries, timezone, todayLocal]);
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -35,16 +58,17 @@ export default function DailyTracker({ initialEntries }: DailyTrackerProps) {
   useEffect(() => {
     fetchEntries();
     
-    // Check for date change every minute
+    // Check for date change every minute (using local timezone)
     const interval = setInterval(() => {
-      const currentDate = new Date().toISOString().split("T")[0];
-      if (currentDate !== today) {
-        fetchEntries();
+      const currentLocalDate = getTodayLocalDateString(timezone);
+      if (currentLocalDate !== todayLocal) {
+        // Date changed - reload page to show new day
+        window.location.reload();
       }
     }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [timezone, todayLocal]);
 
   async function fetchEntries() {
     try {
@@ -52,13 +76,27 @@ export default function DailyTracker({ initialEntries }: DailyTrackerProps) {
       setError(null);
       
       const supabase = getSupabaseClient();
-      console.log("Fetching entries for date:", today);
+      // Get UTC timestamp range for "today" in user's timezone
+      const [startUTC, endUTC] = getLocalDayUtcRange(timezone, todayLocal);
       
+      console.log("Fetching entries for local date:", todayLocal, "timezone:", timezone);
+      console.log("UTC range:", startUTC.toISOString(), "to", endUTC.toISOString());
+      
+      // Query using UTC timestamp range
+      // endUTC is exclusive (start of next day), so use .lt() to exclude entries from next day
       const { data, error } = await supabase
         .from("entries")
         .select("*")
-        .eq("entry_date", today)
+        .gte("created_at", startUTC.toISOString())
+        .lt("created_at", endUTC.toISOString())
         .order("created_at", { ascending: false });
+      
+      console.log("Raw query returned", data?.length || 0, "entries");
+      if (data && data.length > 0) {
+        console.log("Sample entry created_at:", data[0].created_at);
+        const sampleLocalDate = getLocalDateString(new Date(data[0].created_at), timezone);
+        console.log("Sample entry local date:", sampleLocalDate);
+      }
 
       if (error) {
         console.error("Error fetching entries:", error);
@@ -66,8 +104,14 @@ export default function DailyTracker({ initialEntries }: DailyTrackerProps) {
         return;
       }
 
-      console.log("Fetched entries:", data?.length || 0);
-      setEntries(data || []);
+      // Filter to ensure all entries match today's local date (handles edge cases)
+      const filtered = (data || []).filter(entry => {
+        const localDate = getLocalDateString(new Date(entry.created_at), timezone);
+        return localDate === todayLocal;
+      });
+
+      console.log("Fetched entries:", filtered.length);
+      setEntries(filtered);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       console.error("Error in fetchEntries:", err);
@@ -91,11 +135,15 @@ export default function DailyTracker({ initialEntries }: DailyTrackerProps) {
       setSuccessMessage(null);
       
       const supabase = getSupabaseClient();
+      // Set entry_date to today's local date (deprecated but required by DB schema)
+      // TODO: Update database schema to make entry_date nullable or remove it
+      const todayLocalDate = getTodayLocalDateString(timezone);
       const entryData = {
         entry_name: formData.entry_name,
         calories: parseInt(formData.calories),
         protein: parseInt(formData.protein),
-        entry_date: today,
+        entry_date: todayLocalDate, // Deprecated but required until schema is updated
+        // created_at will be set automatically by database (TIMESTAMPTZ DEFAULT now())
       };
       
       console.log("Adding entry:", entryData);
@@ -140,6 +188,7 @@ export default function DailyTracker({ initialEntries }: DailyTrackerProps) {
         entry_name: editData.entry_name,
         calories: parseInt(editData.calories),
         protein: parseInt(editData.protein),
+        // Don't update created_at - it's immutable
       };
       
       console.log("Updating entry:", id, updateData);
