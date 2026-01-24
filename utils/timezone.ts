@@ -177,3 +177,46 @@ export function formatTimestamp(timestamp: string, timezone: string): string {
     year: "numeric",
   });
 }
+
+/**
+ * Format a local date string (YYYY-MM-DD) for display in the specified timezone
+ * Returns formatted date like "Thursday, January 23, 2026"
+ */
+export function formatDateString(localDateString: string, timezone: string): string {
+  // Parse the local date string (YYYY-MM-DD)
+  const [year, month, day] = localDateString.split("-").map(Number);
+  
+  // Create a Date object representing midnight of that date in the timezone
+  // We'll use a UTC date that corresponds to midnight in the timezone
+  const utcMidnight = getUtcForLocalTime(timezone, year, month - 1, day, 0, 0, 0);
+  
+  // Format it using Intl.DateTimeFormat with the timezone
+  return utcMidnight.toLocaleDateString("en-US", {
+    timeZone: timezone,
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+/**
+ * Format a local date string (YYYY-MM-DD) for display in short format
+ * Returns formatted date like "Thu, Jan 23, 2026"
+ */
+export function formatDateStringShort(localDateString: string, timezone: string): string {
+  // Parse the local date string (YYYY-MM-DD)
+  const [year, month, day] = localDateString.split("-").map(Number);
+  
+  // Create a Date object representing midnight of that date in the timezone
+  const utcMidnight = getUtcForLocalTime(timezone, year, month - 1, day, 0, 0, 0);
+  
+  // Format it using Intl.DateTimeFormat with the timezone in short format
+  return utcMidnight.toLocaleDateString("en-US", {
+    timeZone: timezone,
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}

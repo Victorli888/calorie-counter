@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import { type Entry } from "../utils/supabase.ts";
-import { getUserTimezone, getLocalDateString, formatTimestamp } from "../utils/timezone.ts";
+import { getUserTimezone, getLocalDateString, formatDateStringShort } from "../utils/timezone.ts";
 
 interface HistoryViewProps {
   entries: Entry[];
@@ -91,15 +91,9 @@ export default function HistoryView({ entries }: HistoryViewProps) {
           </h3>
           <div class="space-y-2">
             {group.days.map((day) => {
-              // Format the local date for display
-              const [year, month, dayNum] = day.localDate.split("-").map(Number);
-              const date = new Date(year, month - 1, dayNum);
-              const formattedDate = date.toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              });
+              // Format the local date for display using timezone-aware formatting
+              // day.localDate is already in YYYY-MM-DD format in the user's timezone
+              const formattedDate = formatDateStringShort(day.localDate, timezone);
               
               return (
                 <div

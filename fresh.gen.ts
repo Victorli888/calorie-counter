@@ -6,6 +6,7 @@ import * as $_app from "./routes/_app.tsx";
 import * as $history from "./routes/history.tsx";
 import * as $index from "./routes/index.tsx";
 import * as $DailyTracker from "./islands/DailyTracker.tsx";
+import * as $DateHeader from "./islands/DateHeader.tsx";
 import * as $HistoryView from "./islands/HistoryView.tsx";
 import type { Manifest } from "$fresh/server.ts";
 
@@ -17,6 +18,7 @@ const manifest = {
   },
   islands: {
     "./islands/DailyTracker.tsx": $DailyTracker,
+    "./islands/DateHeader.tsx": $DateHeader,
     "./islands/HistoryView.tsx": $HistoryView,
   },
   baseUrl: import.meta.url,

@@ -1,5 +1,6 @@
 import { type Handlers, type PageProps } from "$fresh/server.ts";
 import DailyTracker from "../islands/DailyTracker.tsx";
+import DateHeader from "../islands/DateHeader.tsx";
 import { getSupabaseClient, type Entry } from "../utils/supabase.ts";
 
 export const handler: Handlers<Entry[]> = {
@@ -29,16 +30,9 @@ export const handler: Handlers<Entry[]> = {
 };
 
 export default function Home({ data }: PageProps<Entry[]>) {
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   return (
     <div>
-      <h2 class="text-3xl font-bold mb-6 text-gray-800">{today}</h2>
+      <DateHeader />
       <DailyTracker initialEntries={data} />
     </div>
   );
